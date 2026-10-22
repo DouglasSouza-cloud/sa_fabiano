@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "author": "Armario de tablets",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 0, "left": 0, "attrs": {} },
+    { "type": "board-mfrc522", "id": "rfid1", "top": -200, "left": -250, "attrs": {} },
+    { "type": "board-mfrc522", "id": "rfid2", "top": -200, "left": -30, "attrs": {} },
+    { "type": "board-mfrc522", "id": "rfid3", "top": -200, "left": 190, "attrs": {} },
+    { "type": "board-mfrc522", "id": "rfid4", "top": -200, "left": 410, "attrs": {} },
+    { "type": "wokwi-servo", "id": "servo1", "top": 20, "left": 280, "attrs": {} },
+    { "type": "wokwi-slide-switch", "id": "sw1", "top": 130, "left": 450, "attrs": {} },
+    { "type": "wokwi-led", "id": "ledVerde", "top": 200, "left": 280, "attrs": { "color": "green" } },
+    { "type": "wokwi-led", "id": "ledVermelho", "top": 200, "left": 340, "attrs": { "color": "red" } },
+    { "type": "wokwi-resistor", "id": "r1", "top": 260, "left": 270, "rotate": 90, "attrs": { "value": "220" } },
+    { "type": "wokwi-resistor", "id": "r2", "top": 260, "left": 330, "rotate": 90, "attrs": { "value": "220" } }
+  ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+
+    [ "rfid1:3.3V", "esp:3V3", "red", [ "v0" ] ],
+    [ "rfid1:GND", "esp:GND.1", "black", [ "v0" ] ],
+    [ "rfid1:SCK", "esp:18", "gold", [ "v0" ] ],
+    [ "rfid1:MOSI", "esp:23", "green", [ "v0" ] ],
+    [ "rfid1:MISO", "esp:19", "blue", [ "v0" ] ],
+    [ "rfid1:RST", "esp:21", "white", [ "v0" ] ],
+    [ "rfid1:SDA", "esp:5", "orange", [ "v0" ] ],
+
+    [ "rfid2:3.3V", "esp:3V3", "red", [ "v0" ] ],
+    [ "rfid2:GND", "esp:GND.1", "black", [ "v0" ] ],
+    [ "rfid2:SCK", "esp:18", "gold", [ "v0" ] ],
+    [ "rfid2:MOSI", "esp:23", "green", [ "v0" ] ],
+    [ "rfid2:MISO", "esp:19", "blue", [ "v0" ] ],
+    [ "rfid2:RST", "esp:21", "white", [ "v0" ] ],
+    [ "rfid2:SDA", "esp:16", "orange", [ "v0" ] ],
+
+    [ "rfid3:3.3V", "esp:3V3", "red", [ "v0" ] ],
+    [ "rfid3:GND", "esp:GND.1", "black", [ "v0" ] ],
+    [ "rfid3:SCK", "esp:18", "gold", [ "v0" ] ],
+    [ "rfid3:MOSI", "esp:23", "green", [ "v0" ] ],
+    [ "rfid3:MISO", "esp:19", "blue", [ "v0" ] ],
+    [ "rfid3:RST", "esp:21", "white", [ "v0" ] ],
+    [ "rfid3:SDA", "esp:17", "orange", [ "v0" ] ],
+
+    [ "rfid4:3.3V", "esp:3V3", "red", [ "v0" ] ],
+    [ "rfid4:GND", "esp:GND.1", "black", [ "v0" ] ],
+    [ "rfid4:SCK", "esp:18", "gold", [ "v0" ] ],
+    [ "rfid4:MOSI", "esp:23", "green", [ "v0" ] ],
+    [ "rfid4:MISO", "esp:19", "blue", [ "v0" ] ],
+    [ "rfid4:RST", "esp:21", "white", [ "v0" ] ],
+    [ "rfid4:SDA", "esp:22", "purple", [ "v0" ] ],
+
+    [ "servo1:PWM", "esp:13", "orange", [ "v0" ] ],
+    [ "servo1:V+", "esp:5V", "red", [ "v0" ] ],
+    [ "servo1:GND", "esp:GND.1", "black", [ "v0" ] ],
+
+    [ "sw1:2", "esp:27", "cyan", [ "v0" ] ],
+    [ "sw1:1", "esp:GND.1", "black", [ "v0" ] ],
+
+    [ "esp:25", "r1:1", "green", [ "v0" ] ],
+    [ "r1:2", "ledVerde:A", "green", [ "v0" ] ],
+    [ "ledVerde:C", "esp:GND.1", "black", [ "v0" ] ],
+
+    [ "esp:26", "r2:1", "red", [ "v0" ] ],
+    [ "r2:2", "ledVermelho:A", "red", [ "v0" ] ],
+    [ "ledVermelho:C", "esp:GND.1", "black", [ "v0" ] ]
+  ],
+  "dependencies": {}
+}
