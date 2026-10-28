@@ -4,8 +4,12 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.routers import professores, tablets
 
 app = FastAPI(title="Heimdall - Controle de Tablets")
+
+app.include_router(professores.router)
+app.include_router(tablets.router)
 
 
 @app.get("/health")
