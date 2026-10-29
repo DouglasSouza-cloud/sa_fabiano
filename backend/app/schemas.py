@@ -1,6 +1,6 @@
 import re
 from datetime import datetime
-from typing import Literal, Optional
+from typing import Annotated, Literal, Optional, Union
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -227,3 +227,117 @@ class DisponibilidadeOut(BaseModel):
     capacidade: int
     reservado: int
     disponivel: int
+
+
+# ---------------- Eventos do armario (enviados pelo ESP32) ----------------
+
+class EventoBase(BaseModel):
+    # Identifica o envio. Se o ESP32 reenviar (rede caiu), a API reconhece e nao duplica.
+    request_id: str = Field(min_length=1, max_length=64)
+    lido_em: Optional[datetime] = None
+
+    @field_validator("lido_em")
+    @classmethod
+    def lido_sem_fuso(cls, v):
+        return None if v is None else para_naive(v)
+
+
+class EventoCracha(EventoBase):
+    tipo: Literal["cracha"]
+    uid_cracha: str
+
+    @field_validator("uid_cracha")
+    @classmethod
+    def validar_uid(cls, v: str) -> str:
+        return normalizar_uid(v)
+
+
+class EventoInventario(EventoBase):
+    tipo: Literal["inventario"]
+    epcs: list[str] = Field(max_length=500)
+    completo: bool
+    qualidade: Optional[float] = Field(default=None, ge=0, le=1)
+    inventario_id: Optional[str] = Field(default=None, max_length=64)
+    num_leituras: int = Field(default=0, ge=0)
+
+    @field_validator("epcs")
+    @classmethod
+    def normalizar_lista(cls, v: list[str]) -> list[str]:
+        # Normaliza e remove repetidos (a mesma tag pode ser lida varias vezes)
+        return sorted({normalizar_epc(e) for e in v})
+
+
+class EventoPorta(EventoBase):
+    tipo: Literal["porta"]
+    estado: Literal["aberta", "fechada"]
+
+
+class EventoHeartbeat(EventoBase):
+    tipo: Literal["heartbeat"]
+
+
+class EventoFalha(EventoBase):
+    tipo: Literal["falha_comunicacao", "erro_leitor"]
+    detalhe: Optional[str] = Field(default=None, max_length=500)
+
+
+Evento = Annotated[
+    Union[EventoCracha, EventoInventario, EventoPorta, EventoHeartbeat, EventoFalha],
+    Field(discriminator="tipo"),
+]
+
+
+class ProfessorIdentificado(BaseModel):
+    id: int
+    nome: str
+
+
+class EventoResposta(BaseModel):
+    request_id: str
+    tipo: str
+    resultado: Literal["processado", "ignorado", "rejeitado"]
+    repetido: bool = False
+    detalhe: Optional[str] = None
+    # crachá
+    professor: Optional[ProfessorIdentificado] = None
+    # inventário
+    snapshot_id: Optional[int] = None
+    valido: Optional[bool] = None
+    total_epcs: Optional[int] = None
+    epcs_desconhecidos: Optional[list[str]] = None
+
+
+class EventoLogOut(BaseModel):
+    id: int
+    dispositivo_id: int
+    request_id: str
+    tipo_evento: str
+    origem: str
+    uid_cracha: Optional[str]
+    completa: Optional[bool]
+    lido_em: Optional[datetime]
+    recebido_em: datetime
+    resultado: str
+    detalhe: Optional[str]
+    snapshot_id: Optional[int]
+    payload_json: Optional[dict]
+
+
+class TabletNoInventario(BaseModel):
+    id: int
+    patrimonio: str
+    epc: str
+
+
+class InventarioOut(BaseModel):
+    snapshot_id: int
+    dispositivo_id: int
+    recebido_em: datetime
+    lido_em: Optional[datetime]
+    completo: bool
+    qualidade: Optional[float]
+    valido: bool
+    motivo_invalido: Optional[str]
+    total_epcs: int
+    tablets: list[TabletNoInventario]
+    epcs_desconhecidos: list[str]

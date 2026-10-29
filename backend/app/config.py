@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     reserva_antecedencia_max_horas: int = 24
     reserva_tolerancia_minutos: int = 30
 
+    # Inventario do armario: abaixo disso a leitura e guardada mas nao e usada
+    inventario_qualidade_minima: float = 0.8
+
     @property
     def database_url(self) -> str:
         return (
