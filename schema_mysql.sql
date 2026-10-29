@@ -3,7 +3,9 @@
 -- Schema MySQL 8.0.16+ (usa CHECK e coluna gerada)
 -- ============================================================
 
-CREATE DATABASE IF NOT EXISTS heimdall;
+  DROP DATABASE heimdall;
+  CREATE DATABASE heimdall CHARACTER SET utf8mb4;
+  USE heimdall;
 -- ============================================================
 -- 1. USUÁRIOS ADMINISTRADORES
 -- ============================================================
@@ -582,3 +584,15 @@ WHERE r.status IN ('ativa', 'em_uso');
 -- ============================================================
 -- FIM DO SCRIPT
 -- ============================================================
+INSERT INTO professores (nome, matricula, uid_cracha) VALUES
+  ('Ana Souza',    'P101', 'A1:B2:C3:01'),
+  ('Bruno Lima',   'P102', 'A1:B2:C3:02'),
+  ('Carla Mendes', 'P103', 'A1:B2:C3:03'),
+  ('Diego Santos', 'P104', 'A1:B2:C3:04');
+
+INSERT INTO tablets (patrimonio, epc) VALUES
+  ('TAB-001', 'E20000000000000000000001'),
+  ('TAB-002', 'E20000000000000000000002'),
+  ('TAB-003', 'E20000000000000000000003'),
+  ('TAB-004', 'E20000000000000000000004'),
+  ('TAB-005', 'E20000000000000000000005');

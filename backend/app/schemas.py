@@ -2,7 +2,7 @@ import re
 from datetime import datetime
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 def normalizar_uid(valor: str) -> str:
@@ -136,3 +136,94 @@ class TabletOut(BaseModel):
     status: StatusTablet
     criado_em: datetime
     atualizado_em: datetime
+
+
+# ---------------- Dispositivos (armarios / ESP32) ----------------
+
+class DispositivoCreate(BaseModel):
+    identificador: str = Field(min_length=1, max_length=60, pattern=r"^[A-Za-z0-9_\-]+$")
+    nome: str = Field(min_length=1, max_length=120)
+    simulado: bool = False
+
+    @field_validator("nome")
+    @classmethod
+    def limpar_nome(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("nao pode ficar vazio")
+        return v
+
+
+class DispositivoUpdate(BaseModel):
+    nome: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    ativo: Optional[bool] = None
+
+
+class DispositivoOut(BaseModel):
+    id: int
+    identificador: str
+    nome: str
+    ativo: bool
+    simulado: bool
+    ultimo_contato_em: Optional[datetime]
+    ultimo_ip: Optional[str]
+    criado_em: datetime
+
+
+class DispositivoCriado(DispositivoOut):
+    chave: str = Field(description="Aparece so agora. Guarde: o banco guarda apenas o hash.")
+
+
+# ---------------- Reservas ----------------
+
+StatusReserva = Literal["ativa", "em_uso", "concluida", "cancelada", "expirada"]
+
+
+def para_naive(dt: datetime) -> datetime:
+    """O banco guarda DATETIME sem fuso. Se vier com fuso, converte para o horario local."""
+    if dt.tzinfo is not None:
+        dt = dt.astimezone().replace(tzinfo=None)
+    return dt.replace(microsecond=0)
+
+
+class ReservaCreate(BaseModel):
+    professor_id: int = Field(gt=0)
+    dispositivo_id: int = Field(gt=0)
+    quantidade: int = Field(gt=0, le=500)
+    inicio_em: datetime
+    fim_em: datetime
+    observacao: Optional[str] = Field(default=None, max_length=500)
+
+    @field_validator("inicio_em", "fim_em")
+    @classmethod
+    def sem_fuso(cls, v: datetime) -> datetime:
+        return para_naive(v)
+
+    @model_validator(mode="after")
+    def periodo_valido(self):
+        if self.fim_em <= self.inicio_em:
+            raise ValueError("fim_em deve ser depois de inicio_em")
+        return self
+
+
+class ReservaOut(BaseModel):
+    id: int
+    professor_id: int
+    professor_nome: str
+    dispositivo_id: int
+    quantidade: int
+    inicio_em: datetime
+    fim_em: datetime
+    status: StatusReserva
+    observacao: Optional[str]
+    criada_em: datetime
+    atualizada_em: datetime
+
+
+class DisponibilidadeOut(BaseModel):
+    dispositivo_id: int
+    inicio_em: datetime
+    fim_em: datetime
+    capacidade: int
+    reservado: int
+    disponivel: int
