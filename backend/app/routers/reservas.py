@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import text
+from sqlalchemy import bindparam, text
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -28,7 +28,7 @@ SELECT_RESERVA = (
 
 # ---------------- Regras ----------------
 
-def expirar_vencidas(db: Session, agora: datetime) -> None:
+def expirar_vencidas(db: Session, agora: datetime, commit: bool = True) -> None:
     """Reserva ativa vira 'expirada' quando passa da tolerancia depois do inicio
     OU quando chega ao fim, o que vier primeiro. Roda a cada uso dos endpoints."""
     limite = agora - timedelta(minutes=settings.reserva_tolerancia_minutos)
@@ -39,7 +39,8 @@ def expirar_vencidas(db: Session, agora: datetime) -> None:
         ),
         {"agora": agora, "limite": limite},
     )
-    db.commit()
+    if commit:
+        db.commit()
 
 
 def capacidade(db: Session) -> int:
@@ -50,16 +51,22 @@ def capacidade(db: Session) -> int:
     ).scalar()
 
 
-def pico_reservado(db: Session, dispositivo_id: int, inicio: datetime, fim: datetime) -> int:
+def pico_reservado(
+    db: Session,
+    dispositivo_id: int,
+    inicio: datetime,
+    fim: datetime,
+    status: tuple = ("ativa", "em_uso"),
+) -> int:
     """Maior quantidade de tablets reservados ao mesmo tempo dentro da janela.
     Nao e a soma das reservas: duas reservas seguidas nao se acumulam."""
+    consulta = text(
+        "SELECT inicio_em, fim_em, quantidade FROM reservas "
+        "WHERE dispositivo_id = :d AND status IN :st "
+        "AND inicio_em < :fim AND fim_em > :inicio"
+    ).bindparams(bindparam("st", expanding=True))
     rows = db.execute(
-        text(
-            "SELECT inicio_em, fim_em, quantidade FROM reservas "
-            "WHERE dispositivo_id = :d AND status IN ('ativa', 'em_uso') "
-            "AND inicio_em < :fim AND fim_em > :inicio"
-        ),
-        {"d": dispositivo_id, "inicio": inicio, "fim": fim},
+        consulta, {"d": dispositivo_id, "inicio": inicio, "fim": fim, "st": list(status)}
     ).all()
     # O pico so pode mudar quando uma reserva comeca
     pontos = {inicio} | {r.inicio_em for r in rows if inicio < r.inicio_em < fim}

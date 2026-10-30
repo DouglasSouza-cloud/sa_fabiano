@@ -7,6 +7,7 @@ from sqlalchemy import bindparam, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.armario import abrir_sessao, processar_inventario, trava_dispositivo
 from app.auth import dispositivo_autenticado
 from app.config import settings
 from app.database import get_db
@@ -43,21 +44,18 @@ def _resposta_anterior(db: Session, dispositivo_id: int, request_id: str) -> Opt
 
 # ---------------- Processamento de cada tipo ----------------
 
-def _cracha(db: Session, ev: EventoCracha):
+def _cracha(db: Session, disp: dict, ev: EventoCracha, agora: datetime):
     prof = db.execute(
         text("SELECT id, nome, ativo FROM professores WHERE uid_cracha = :uid"),
         {"uid": ev.uid_cracha},
     ).mappings().first()
+    log = {"uid_cracha": ev.uid_cracha}
     if prof is None:
-        return "rejeitado", "Cracha nao cadastrado", {}, {"uid_cracha": ev.uid_cracha}
+        return "rejeitado", "Cracha nao cadastrado", {"destravar": False}, log
     if not prof["ativo"]:
-        return "rejeitado", "Professor inativo", {}, {"uid_cracha": ev.uid_cracha}
-    return (
-        "processado",
-        None,
-        {"professor": {"id": prof["id"], "nome": prof["nome"]}},
-        {"uid_cracha": ev.uid_cracha},
-    )
+        return "rejeitado", "Professor inativo", {"destravar": False}, log
+    resultado, detalhe, extras = abrir_sessao(db, disp, dict(prof), ev.request_id, agora)
+    return resultado, detalhe, extras, log
 
 
 def _inventario(db: Session, disp: dict, ev: EventoInventario, origem: str, agora: datetime):
@@ -100,6 +98,10 @@ def _inventario(db: Session, disp: dict, ev: EventoInventario, origem: str, agor
         "total_epcs": len(ev.epcs),
         "epcs_desconhecidos": desconhecidos,
     }
+    if valido:
+        extras.update(
+            processar_inventario(db, disp, res.lastrowid, ev.epcs, desconhecidos, agora)
+        )
     resultado = "processado" if valido else "ignorado"
     return resultado, motivo, extras, {"completa": ev.completo, "snapshot_id": res.lastrowid}
 
@@ -118,12 +120,23 @@ def receber(
     if anterior is not None:
         return {**anterior, "repetido": True}
 
-    agora = datetime.now()
     origem = "simulacao" if dispositivo["simulado"] else "real"
 
     try:
+        if isinstance(evento, (EventoCracha, EventoInventario)):
+            # Um cracha ou inventario por vez em cada armario. O commit antes do bloqueio
+            # encerra a leitura acima: depois de esperar, o MySQL precisa mostrar o que
+            # o evento anterior acabou de gravar.
+            db.commit()
+            trava_dispositivo(db, dispositivo["id"])
+            anterior = _resposta_anterior(db, dispositivo["id"], evento.request_id)
+            if anterior is not None:
+                db.rollback()
+                return {**anterior, "repetido": True}
+
+        agora = datetime.now()
         if isinstance(evento, EventoCracha):
-            resultado, detalhe, extras, log = _cracha(db, evento)
+            resultado, detalhe, extras, log = _cracha(db, dispositivo, evento, agora)
         elif isinstance(evento, EventoInventario):
             resultado, detalhe, extras, log = _inventario(db, dispositivo, evento, origem, agora)
         elif isinstance(evento, EventoPorta):

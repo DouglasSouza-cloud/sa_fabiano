@@ -300,11 +300,19 @@ class EventoResposta(BaseModel):
     detalhe: Optional[str] = None
     # crachá
     professor: Optional[ProfessorIdentificado] = None
+    # crachá: o ESP32 destrava a porta quando destravar=true
+    destravar: Optional[bool] = None
+    emprestimo_id: Optional[int] = None
+    reserva_id: Optional[int] = None
+    limite: Optional[int] = None
     # inventário
     snapshot_id: Optional[int] = None
     valido: Optional[bool] = None
     total_epcs: Optional[int] = None
     epcs_desconhecidos: Optional[list[str]] = None
+    retirados: Optional[list[str]] = None
+    devolvidos: Optional[list[str]] = None
+    ocorrencias_abertas: Optional[int] = None
 
 
 class EventoLogOut(BaseModel):
@@ -341,3 +349,66 @@ class InventarioOut(BaseModel):
     total_epcs: int
     tablets: list[TabletNoInventario]
     epcs_desconhecidos: list[str]
+
+
+# ---------------- Emprestimos e ocorrencias ----------------
+
+StatusEmprestimo = Literal["aberta", "aguardando_confirmacao", "fechada", "expirada", "ocorrencia"]
+
+
+class EmprestimoItemOut(BaseModel):
+    tablet_id: int
+    patrimonio: str
+    retirado_em: datetime
+    devolvido_em: Optional[datetime]
+    devolvido_por_professor_id: Optional[int]
+
+
+class EmprestimoOut(BaseModel):
+    id: int
+    professor_id: int
+    professor_nome: str
+    dispositivo_id: int
+    reserva_id: Optional[int]
+    status: StatusEmprestimo
+    origem: str
+    aberta_em: datetime
+    fechada_em: Optional[datetime]
+    itens: list[EmprestimoItemOut]
+
+
+class TabletForaOut(BaseModel):
+    tablet_id: int
+    patrimonio: str
+    epc: str
+    professor_id: int
+    professor: str
+    matricula: str
+    emprestimo_id: int
+    retirado_em: datetime
+
+
+TipoOcorrencia = Literal[
+    "retirada_sem_sessao", "sessoes_concorrentes", "epc_desconhecido",
+    "devolucao_outro_professor", "leitura_incompleta_repetida",
+    "tablet_indisponivel_retirado", "retirada_acima_do_limite", "outro",
+]
+
+
+class OcorrenciaOut(BaseModel):
+    id: int
+    tipo: TipoOcorrencia
+    status: Literal["aberta", "resolvida", "descartada"]
+    origem: str
+    dispositivo_id: Optional[int]
+    emprestimo_id: Optional[int]
+    tablet_id: Optional[int]
+    snapshot_id: Optional[int]
+    descricao: str
+    criada_em: datetime
+    resolvida_em: Optional[datetime]
+    resolucao: Optional[str]
+
+
+class ResolverOcorrencia(BaseModel):
+    resolucao: str = Field(min_length=1, max_length=500)

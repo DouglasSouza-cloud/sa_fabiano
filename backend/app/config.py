@@ -18,6 +18,12 @@ class Settings(BaseSettings):
     # Inventario do armario: abaixo disso a leitura e guardada mas nao e usada
     inventario_qualidade_minima: float = 0.8
 
+    # Retirada e devolucao
+    # Tempo que a sessao fica esperando a retirada depois do cracha
+    sessao_janela_minutos: int = 10
+    # Quem retira SEM reserva precisa deixar tablets para reservas que comecam nesse prazo
+    retirada_livre_horizonte_minutos: int = 60
+
     @property
     def database_url(self) -> str:
         return (
